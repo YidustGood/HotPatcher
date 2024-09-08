@@ -307,7 +307,7 @@ FString UFlibHotPatcherCoreHelper::GetProjectCookedDir()
 #include "CookOnTheSide/CookOnTheFlyServer.h"
 #include "HACK_PRIVATE_MEMBER_UTILS.hpp"
 DECL_HACK_PRIVATE_NOCONST_FUNCTION(UCookOnTheFlyServer, FindOrCreatePackageWriter, ICookedPackageWriter&, const ITargetPlatform* TargetPlatform)
-DECL_HACK_PRIVATE_DATA(UCookOnTheFlyServer, TUniquePtr<class FSandboxPlatformFile>, SandboxFile)
+DECL_HACK_PRIVATE_DATA(UCookOnTheFlyServer, TUniquePtr<UE::Cook::FCookSandbox>, SandboxFile)
 #endif
 
 FSavePackageContext* UFlibHotPatcherCoreHelper::CreateSaveContext(const ITargetPlatform* TargetPlatform,
@@ -638,7 +638,7 @@ bool UFlibHotPatcherCoreHelper::CookPackage(
 			PackageArgs.TargetPlatform = Platform.Value;
 			PackageArgs.bSlowTask = false;
 			PackageArgs.FinalTimeStamp = FDateTime::MinValue();
-			FArchiveCookContext ArchiveCookContext(Package, FArchiveCookContext::ECookType::ECookByTheBook, FArchiveCookContext::ECookingDLC::ECookingDLCNo);
+			FArchiveCookContext ArchiveCookContext(Package, UE::Cook::ECookType::ByTheBook, UE::Cook::ECookingDLC::No);
 			FArchiveCookData CookData(*Platform.Value, ArchiveCookContext);
 			PackageArgs.ArchiveCookData = &CookData;
 			
@@ -962,7 +962,7 @@ FString UFlibHotPatcherCoreHelper::GetUnrealPakBinary()
     );
 #endif
 
-	return TEXT("");
+	// return TEXT("");
 }
 
 FString UFlibHotPatcherCoreHelper::GetUECmdBinary()
@@ -1005,7 +1005,7 @@ FString UFlibHotPatcherCoreHelper::GetUECmdBinary()
 				bIsDevelopment ? TEXT("") : *FString::Printf(TEXT("-Mac-%s"),*ConfigutationName)));
 #endif
 #endif
-	return TEXT("");
+	// return TEXT("");
 }
 
 
