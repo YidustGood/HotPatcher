@@ -127,7 +127,11 @@ bool UFlibShaderCodeLibraryHelper::SaveShaderLibrary(const ITargetPlatform* Targ
 #if !UE_VERSION_OLDER_THAN(5,1,0)
 		bool bOutHasData = false;
 #endif
-		bSaved = SHADER_COOKER_CLASS::SaveShaderLibraryWithoutChunking(TargetPlatform, Name, ShaderCodeDir, RootMetaDataPath, PlatformSCLCSVPaths, ErrorString
+		bSaved = SHADER_COOKER_CLASS::SaveShaderLibraryWithoutChunking(TargetPlatform, Name, ShaderCodeDir, RootMetaDataPath, PlatformSCLCSVPaths
+#if !UE_VERSION_OLDER_THAN(5,8,0)
+		,UE::Cook::EPackagingSystem::Loose
+#endif
+		,ErrorString
 #if !UE_VERSION_OLDER_THAN(5,1,0)
 		,bOutHasData
 #endif
@@ -274,9 +278,15 @@ void UFlibShaderCodeLibraryHelper::CancelMaterialShaderCompile(UMaterialInterfac
 	if(MaterialInterface)
 	{
 		UMaterial* Material = MaterialInterface->GetMaterial();
+#if UE_VERSION_OLDER_THAN(5,8,0)
 		for (int32 FeatureLevel = 0; FeatureLevel < ERHIFeatureLevel::Num; ++FeatureLevel)
 		{
 			if (FMaterialResource* Res = Material->GetMaterialResource((ERHIFeatureLevel::Type)FeatureLevel))
+#else
+		for (int32 ShaderPlatformIndex = 0; ShaderPlatformIndex < EShaderPlatform::SP_NumPlatforms; ++ShaderPlatformIndex)
+		{
+			if (FMaterialResource* Res = Material->GetMaterialResource(static_cast<EShaderPlatform>(ShaderPlatformIndex)))
+#endif
 			{
 				Res->CancelCompilation();
 			}

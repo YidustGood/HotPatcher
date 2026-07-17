@@ -120,7 +120,7 @@ void FVersionUpdaterManager::OnRequestComplete(FHttpRequestPtr RequestPtr, FHttp
 									FString ValueStr;
 									if(ModDescJsonObject->TryGetStringField(Name,ValueStr))
 									{
-										Result = UKismetStringLibrary::Conv_StringToFloat(ValueStr);
+										Result = static_cast<float>(UKismetStringLibrary::Conv_StringToDouble(ValueStr));
 									}
 									return Result;
 								};

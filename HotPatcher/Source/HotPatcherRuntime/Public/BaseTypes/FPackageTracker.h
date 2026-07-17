@@ -106,8 +106,10 @@ struct FPackageTracker : public FPackageTrackerBase
 	}
 	virtual void OnPackageDeleted(UPackage* Package) override
 	{
-		FName AssetPathName = FName(*Package->GetPathName());
-		RemoveTrackPackage(AssetPathName);
+		// PackageTracker records packages discovered during the whole cook, not
+		// only packages that are currently loaded. GC runs before every cook
+		// cluster, so removing a package here makes the tracker rediscover and
+		// recook the same package indefinitely after it is loaded again.
 	}
 	
 public:

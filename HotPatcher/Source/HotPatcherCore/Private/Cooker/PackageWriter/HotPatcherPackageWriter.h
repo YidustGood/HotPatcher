@@ -5,14 +5,27 @@
 #if WITH_PACKAGE_CONTEXT && ENGINE_MAJOR_VERSION > 4
 #include "Serialization/PackageWriter.h"
 #include "PackageWriterToSharedBuffer.h"
+#if !UE_VERSION_OLDER_THAN(5,8,0)
+#include "Serialization/BasePackageWriter.h"
+#endif
 
-class FHotPatcherPackageWriter:public TPackageWriterToSharedBuffer<ICookedPackageWriter>
+#if UE_VERSION_OLDER_THAN(5,8,0)
+using FHotPatcherPackageWriterBase = ICookedPackageWriter;
+#else
+using FHotPatcherPackageWriterBase = FBaseCookedPackageWriter;
+#endif
+
+class FHotPatcherPackageWriter:public TPackageWriterToSharedBuffer<FHotPatcherPackageWriterBase>
 {
 public:
+	using Super = TPackageWriterToSharedBuffer<FHotPatcherPackageWriterBase>;
+
 	virtual FCookCapabilities GetCookCapabilities() const override
 	{
 		FCookCapabilities Result;
+#if UE_VERSION_OLDER_THAN(5,8,0)
 		Result.bDiffModeSupported = true;
+#endif
 		return Result;
 	}
 
@@ -33,29 +46,41 @@ public:
 #endif
 	) override;
 	// virtual void Flush() override;
+#if UE_VERSION_OLDER_THAN(5,8,0)
 	virtual TUniquePtr<FAssetRegistryState> LoadPreviousAssetRegistry()override;
+#else
+	virtual void SetCooker(UE::PackageWriter::Private::ICookerInterface* CookerInterface) override {}
+	virtual void PopulateOplog(const FAssetRegistryState& PreviousState, int32& OutNumPackagesInOplog) override { OutNumPackagesInOplog = 0; }
+	virtual void UpdateLastReferenceDateAndPruneStaleOps(UE::Cook::Artifact::FUpdateOplogPackagesContext& OplogContext) override {}
+	virtual TArray<FName> GetOplogPackageNames() override { return {}; }
+	virtual void GetOplogAttachments(TArrayView<FName> PackageNames, TArrayView<FUtf8StringView> AttachmentKeys,
+		TUniqueFunction<void(FName, FUtf8StringView, FCbObject&&)>&& Callback) override;
+	virtual void GetBaseGameOplogAttachments(TArrayView<FName> PackageNames, TArrayView<FUtf8StringView> AttachmentKeys,
+		TUniqueFunction<void(FName, FUtf8StringView, FCbObject&&)>&& Callback) override;
+	virtual ECommitStatus GetCommitStatus(FName PackageName) override { return ECommitStatus::NotCommitted; }
+#endif
 	
 	virtual FCbObject GetOplogAttachment(FName PackageName, FUtf8StringView AttachmentKey) override;
 	virtual void RemoveCookedPackages(TArrayView<const FName> PackageNamesToRemove) override;
 	virtual void RemoveCookedPackages() override;
 #if UE_VERSION_OLDER_THAN(5,4,0)
 	virtual void MarkPackagesUpToDate(TArrayView<const FName> UpToDatePackages) override;
-#else
+#elif UE_VERSION_OLDER_THAN(5,8,0)
 	virtual void UpdatePackageModificationStatus(FName PackageName, bool bIterativelyUnmodified, bool& bInOutShouldIterativelySkip) override;
 #endif
 	virtual bool GetPreviousCookedBytes(const FPackageInfo& Info, FPreviousCookedBytesData& OutData) override;
 #if UE_VERSION_OLDER_THAN(5,3,0)
 	virtual void CompleteExportsArchiveForDiff(const FPackageInfo& Info, FLargeMemoryWriter& ExportsArchive)override;
 #else
-	virtual EPackageWriterResult BeginCacheForCookedPlatformData(FBeginCacheForCookedPlatformDataInfo& Info){ return EPackageWriterResult::Success;}
+	virtual EPackageWriterResult BeginCacheForCookedPlatformData(FBeginCacheForCookedPlatformDataInfo& Info) override { return EPackageWriterResult::Success;}
 #endif
 	virtual void CommitPackageInternal(FPackageRecord&& Record,const IPackageWriter::FCommitPackageInfo& Info)override;
 
 	virtual FPackageWriterRecords::FPackage* ConstructRecord() override;
 #if UE_VERSION_NEWER_THAN(5,1,1)
-	virtual TFuture<FCbObject> WriteMPCookMessageForPackage(FName PackageName);
+	virtual TFuture<FCbObject> WriteMPCookMessageForPackage(FName PackageName) override;
 	/** Read PackageData written by WriteMPCookMessageForPackage on a CookWorker. Called only on CookDirector. */
-	virtual bool TryReadMPCookMessageForPackage(FName PackageName, FCbObjectView Message){ return false;}
+	virtual bool TryReadMPCookMessageForPackage(FName PackageName, FCbObjectView Message) override { return false;}
 #endif
 	// virtual TFuture<FMD5Hash> CommitPackage(FCommitPackageInfo&& Info)override;
 	// virtual void WritePackageData(const FPackageInfo& Info, FLargeMemoryWriter& ExportsArchive, const TArray<FFileRegion>& FileRegions) override;

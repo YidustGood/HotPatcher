@@ -67,8 +67,8 @@ void FCountServerlessWrapper::Processor()
 void FCountServerlessWrapper::RequestObjectID()
 {
 	CancelRequest(ObjectIDRequest);
-	FHttpModule::Get().SetHttpTimeout(5.0);
 	ObjectIDRequest = FHttpModule::Get().CreateRequest();
+	ObjectIDRequest->SetTimeout(5.0f);
 	ObjectIDRequest->OnProcessRequestComplete().BindRaw(this, &FCountServerlessWrapper::OnObjectIdReceived);
 	ObjectIDRequest->SetURL(RequestInfo.Host);
 	ObjectIDRequest->SetHeader(TEXT("X-LC-Id"),Decode(RequestInfo.AppId));

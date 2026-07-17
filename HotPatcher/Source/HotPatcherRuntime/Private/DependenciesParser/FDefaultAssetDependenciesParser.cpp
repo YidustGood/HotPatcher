@@ -8,6 +8,58 @@
 #include "Resources/Version.h"
 #include "Misc/EngineVersionComparison.h"
 
+#if !UE_VERSION_OLDER_THAN(5,3,0)
+namespace
+{
+	struct FHotPatcherDependencyQuery
+	{
+		UE::AssetRegistry::EDependencyCategory Category = UE::AssetRegistry::EDependencyCategory::None;
+		UE::AssetRegistry::FDependencyQuery Flags;
+	};
+
+	FHotPatcherDependencyQuery MakeDependencyQuery(EAssetRegistryDependencyTypeEx Type)
+	{
+		using namespace UE::AssetRegistry;
+
+		FHotPatcherDependencyQuery Result;
+		switch (Type)
+		{
+		case EAssetRegistryDependencyTypeEx::Soft:
+			Result.Category = EDependencyCategory::Package;
+			Result.Flags.Excluded = EDependencyProperty::Hard;
+			break;
+		case EAssetRegistryDependencyTypeEx::Hard:
+			Result.Category = EDependencyCategory::Package;
+			Result.Flags.Required = EDependencyProperty::Hard;
+			break;
+		case EAssetRegistryDependencyTypeEx::SearchableName:
+			Result.Category = EDependencyCategory::SearchableName;
+			break;
+		case EAssetRegistryDependencyTypeEx::SoftManage:
+			Result.Category = EDependencyCategory::Manage;
+			Result.Flags.Excluded = EDependencyProperty::Direct;
+			break;
+		case EAssetRegistryDependencyTypeEx::HardManage:
+			Result.Category = EDependencyCategory::Manage;
+			Result.Flags.Required = EDependencyProperty::Direct;
+			break;
+		case EAssetRegistryDependencyTypeEx::Packages:
+			Result.Category = EDependencyCategory::Package;
+			break;
+		case EAssetRegistryDependencyTypeEx::Manage:
+			Result.Category = EDependencyCategory::Manage;
+			break;
+		case EAssetRegistryDependencyTypeEx::All:
+			Result.Category = EDependencyCategory::All;
+			break;
+		default:
+			break;
+		}
+		return Result;
+	}
+}
+#endif
+
 void FAssetDependenciesParser::Parse(const FAssetDependencies& InParseConfig)
 {
 	ParseConfig = InParseConfig;
@@ -220,26 +272,39 @@ TSet<FName> FAssetDependenciesParser::GatherAssetDependicesInfoRecursively(
 	UFlibAssetManageHelper::GetAssetsDataByPackageName(InLongPackageName.ToString(),CurrentAssetData);
 
 	bool bGetDependenciesSuccess = false;
-	EAssetRegistryDependencyType::Type TotalType = EAssetRegistryDependencyType::None;
-
-	for (const auto& DepType : InAssetDependencyTypes)
-	{
-		TotalType = UFlibAssetManageHelper::ConvAssetRegistryDependencyToInternal(DepType);
-	}
-
 	TArray<FName> CurrentAssetDependencies;
 	
 	{
 		SCOPED_NAMED_EVENT_TEXT("GetDependencies",FColor::Red);
 		PRAGMA_DISABLE_DEPRECATION_WARNINGS
-			bGetDependenciesSuccess = InAssetRegistryModule.Get().GetDependencies(InLongPackageName, CurrentAssetDependencies,
-
 #if UE_VERSION_OLDER_THAN(5,3,0)
-				TotalType
+		EAssetRegistryDependencyType::Type TotalType = EAssetRegistryDependencyType::None;
+		for (const EAssetRegistryDependencyTypeEx DepType : InAssetDependencyTypes)
+		{
+			TotalType = static_cast<EAssetRegistryDependencyType::Type>(
+				static_cast<uint8>(TotalType) | static_cast<uint8>(DepType));
+		}
+		bGetDependenciesSuccess = InAssetRegistryModule.Get().GetDependencies(
+			InLongPackageName, CurrentAssetDependencies, TotalType);
 #else
-				UE::AssetRegistry::EDependencyCategory::Package
+		for (const EAssetRegistryDependencyTypeEx DepType : InAssetDependencyTypes)
+		{
+			const FHotPatcherDependencyQuery Query = MakeDependencyQuery(DepType);
+			if (Query.Category == UE::AssetRegistry::EDependencyCategory::None)
+			{
+				continue;
+			}
+
+			TArray<FName> DependenciesForType;
+			const bool bQuerySucceeded = InAssetRegistryModule.Get().GetDependencies(
+				InLongPackageName, DependenciesForType, Query.Category, Query.Flags);
+			bGetDependenciesSuccess |= bQuerySucceeded;
+			for (const FName Dependency : DependenciesForType)
+			{
+				CurrentAssetDependencies.AddUnique(Dependency);
+			}
+		}
 #endif
-		);
 		PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 		for(const auto& SkipForDependencies:ParserSkipAssetByDependencies(CurrentAssetData,CurrentAssetDependencies))

@@ -18,7 +18,9 @@
 #include "HotPatcherCore.h"
 // engine header
 #include "CoreMinimal.h"
+#include "Misc/EngineVersionComparison.h"
 #include "Modules/ModuleManager.h"
+#include "UObject/ObjectSaveContext.h"
 #include "ContentBrowserDelegates.h"
 #include "MissionNotificationProxy.h"
 #include "ThreadUtils/FProcWorkerThread.hpp"
@@ -90,7 +92,11 @@ public:
 	void CookAndPakByPatchSettings(TSharedPtr<FExportPatchSettings> PatchSettings,bool bForceStandalone);
 	void OnPakPreset(FExportPatchSettings Config,ETargetPlatform Platform);
 	void OnPakPreset(FExportPatchSettings Config);
-	void OnObjectSaved( UObject* ObjectSaved );
+#if UE_VERSION_OLDER_THAN(5,8,0)
+	void OnObjectSaved(UObject* ObjectSaved);
+#else
+	void OnObjectSaved(UObject* ObjectSaved, FObjectPreSaveContext SaveContext);
+#endif
 
 
 	FExportPatchSettings MakeTempPatchSettings(

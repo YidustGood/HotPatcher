@@ -4,6 +4,7 @@
 #include "JsonObjectConverter.h"
 #include "HAL/PlatformMisc.h"
 #include "Misc/EnumRange.h"
+#include "Misc/EngineVersionComparison.h"
 #include "Resources/Version.h"
 #include "Misc/CommandLine.h"
 
@@ -321,7 +322,7 @@ namespace THotPatcherTemplateHelper
 				result.Add(SrcArray[Index]);
 				if(RemoveFromSrc)
 				{
-					SrcArray.RemoveAtSwap(Index,1,false);
+					SrcArray.RemoveAtSwap(Index,1,EAllowShrinking::No);
 				}
 			}
 		}
@@ -353,7 +354,14 @@ namespace THotPatcherTemplateHelper
 				MaxEnumValue
 			);
 		}
-#if ENGINE_MAJOR_VERSION > 4 || ENGINE_MINOR_VERSION > 25
+#if !UE_VERSION_OLDER_THAN(5,8,0)
+		UEnumIns->SetEnums(
+			EnumNamePairs,
+			UEnum::ECppForm::EnumClass,
+			UEnum::EUnderlyingType::int64,
+			EEnumFlags::None,
+			UEnum::EAddMaxKeyIfMissing::Yes);
+#elif ENGINE_MAJOR_VERSION > 4 || ENGINE_MINOR_VERSION > 25
 		UEnumIns->SetEnums(EnumNamePairs,UEnum::ECppForm::EnumClass,EEnumFlags::None,true);
 #else
 		UEnumIns->SetEnums(EnumNamePairs,UEnum::ECppForm::EnumClass,true);

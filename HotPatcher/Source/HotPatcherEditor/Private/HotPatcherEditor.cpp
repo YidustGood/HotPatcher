@@ -73,7 +73,9 @@ void FHotPatcherEditorModule::StartupModule()
 	UE_LOG(LogHotPatcherEdotor,Display,TEXT("FHotPatcherEditorModule StartupModule"));
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 	FHotPatcherStyle::Initialize();
+#if UE_VERSION_OLDER_THAN(5,8,0)
 	FHotPatcherStyle::ReloadTextures();
+#endif
 	FHotPatcherCommands::Register();
 
 	FHotPatcherActionManager::Get().Init();
@@ -95,7 +97,11 @@ void FHotPatcherEditorModule::StartupModule()
 		return;
 	
 	PRAGMA_DISABLE_DEPRECATION_WARNINGS
+#if UE_VERSION_OLDER_THAN(5,8,0)
 	FCoreUObjectDelegates::OnObjectSaved.AddRaw(this,&FHotPatcherEditorModule::OnObjectSaved);
+#else
+	FCoreUObjectDelegates::OnObjectPreSave.AddRaw(this,&FHotPatcherEditorModule::OnObjectSaved);
+#endif
 	PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	MakeProjectSettingsForHotPatcher();
 
@@ -150,6 +156,11 @@ void FHotPatcherEditorModule::ShutdownModule()
 	FHotPatcherCommands::Unregister();
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(HotPatcherTabName);
 	FHotPatcherStyle::Shutdown();
+#if UE_VERSION_OLDER_THAN(5,8,0)
+	FCoreUObjectDelegates::OnObjectSaved.RemoveAll(this);
+#else
+	FCoreUObjectDelegates::OnObjectPreSave.RemoveAll(this);
+#endif
 }
 
 void FHotPatcherEditorModule::OpenDockTab()
@@ -167,23 +178,21 @@ void FHotPatcherEditorModule::PluginButtonClicked(const FSHotPatcherContext& Con
 {
 	if(DockTab.IsValid())
 	{
-		FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(HotPatcherTabName);
-		DockTab.Reset();
+		DockTab->SetContent(SNew(SHotPatcher, Context));
+		FGlobalTabmanager::Get()->InvokeTab(HotPatcherTabName);
+		return;
 	}
 	
-	if (!DockTab.IsValid())
-	{
 	#if UE_VERSION_OLDER_THAN(5,4,0)
-		FGlobalTabmanager::Get()->RegisterNomadTabSpawner(HotPatcherTabName, FOnSpawnTab::CreateLambda([=](const class FSpawnTabArgs& InSpawnTabArgs)
+	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(HotPatcherTabName, FOnSpawnTab::CreateLambda([=](const class FSpawnTabArgs& InSpawnTabArgs)
 	#else
-		FGlobalTabmanager::Get()->RegisterNomadTabSpawner(HotPatcherTabName, FOnSpawnTab::CreateLambda([=, this](const class FSpawnTabArgs& InSpawnTabArgs)
+	FGlobalTabmanager::Get()->RegisterNomadTabSpawner(HotPatcherTabName, FOnSpawnTab::CreateLambda([=, this](const class FSpawnTabArgs& InSpawnTabArgs)
 	#endif
-		{
-			return SpawnHotPatcherTab(Context);
-		}))
-		.SetDisplayName(LOCTEXT("FHotPatcherTabTitle", "HotPatcher"))
-		.SetMenuType(ETabSpawnerMenuType::Hidden);
-	}
+	{
+		return SpawnHotPatcherTab(Context);
+	}))
+	.SetDisplayName(LOCTEXT("FHotPatcherTabTitle", "HotPatcher"))
+	.SetMenuType(ETabSpawnerMenuType::Hidden);
 	FGlobalTabmanager::Get()->InvokeTab(HotPatcherTabName);
 }
 
@@ -520,7 +529,7 @@ void FHotPatcherEditorModule::OnAddToPatchSettings(const FToolMenuContext& MenuC
 	{
 		FPatcherSpecifyAsset PatchSettingAssetElement;
 		FSoftObjectPath AssetObjectPath;
-		AssetObjectPath.SetPath(UFlibAssetManageHelper::GetObjectPathByAssetData(AssetData));
+		AssetObjectPath = FSoftObjectPath(UFlibAssetManageHelper::GetObjectPathByAssetData(AssetData).ToString());
 		PatchSettingAssetElement.Asset = AssetObjectPath;
 		PatchSettingAssetElement.bAnalysisAssetDependencies = true;
 		AssetsSoftPath.AddUnique(PatchSettingAssetElement);
@@ -676,7 +685,11 @@ void FHotPatcherEditorModule::OnCookAndPakPlatform(ETargetPlatform Platform, boo
 	);
 }
 
+#if UE_VERSION_OLDER_THAN(5,8,0)
 void FHotPatcherEditorModule::OnObjectSaved(UObject* ObjectSaved)
+#else
+void FHotPatcherEditorModule::OnObjectSaved(UObject* ObjectSaved, FObjectPreSaveContext SaveContext)
+#endif
 {
 	if (GIsCookerLoadingPackage)
 	{

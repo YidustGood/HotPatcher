@@ -4,6 +4,7 @@
 #include "ShaderLibUtils//FlibShaderCodeLibraryHelper.h"
 #include "Interfaces/ITargetPlatform.h"
 #include "Resources/Version.h"
+#include "Misc/EngineVersionComparison.h"
 
 FCookShaderCollectionProxy::FCookShaderCollectionProxy(const TArray<FString>& InPlatformNames,const FString& InLibraryName,bool bInShareShader,bool InIsNative,bool bInMaster,const FString& InSaveBaseDir)
 :PlatformNames(InPlatformNames),LibraryName(InLibraryName),bShareShader(bInShareShader),bIsNative(InIsNative),bMaster(bInMaster),SaveBaseDir(InSaveBaseDir){}
@@ -14,7 +15,11 @@ void FCookShaderCollectionProxy::Init()
 {
 	if(bShareShader)
 	{
+#if UE_VERSION_OLDER_THAN(5,8,0)
 		SHADER_COOKER_CLASS::InitForCooking(bIsNative);
+#else
+		SHADER_COOKER_CLASS::InitForCooking(bIsNative, nullptr);
+#endif
 		for(const auto& PlatformName:PlatformNames)
 		{
 			ITargetPlatform* TargetPlatform = UFlibHotPatcherCoreHelper::GetPlatformByName(PlatformName);

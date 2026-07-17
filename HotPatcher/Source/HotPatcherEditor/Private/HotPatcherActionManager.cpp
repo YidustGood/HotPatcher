@@ -155,7 +155,7 @@ float FHotPatcherActionManager::GetHotPatcherVersion() const
 		FHotPatcherCoreModule::Get().GetMainVersion(),
 		FHotPatcherCoreModule::Get().GetPatchVersion()
 		);
-	return UKismetStringLibrary::Conv_StringToFloat(Version);
+	return static_cast<float>(UKismetStringLibrary::Conv_StringToDouble(Version));
 }
 
 FHotPatcherAction* FHotPatcherActionManager::GetTopActionByCategory(const FString CategoryName)

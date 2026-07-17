@@ -16,6 +16,7 @@
 #include "Interfaces/IHttpResponse.h"
 #include "Interfaces/IPluginManager.h"
 #include "Misc/EngineVersionComparison.h"
+#include "Async/Async.h"
 
 #if !UE_VERSION_OLDER_THAN(5,1,0)
 	typedef FAppStyle FEditorStyle;
@@ -355,7 +356,9 @@ void SVersionUpdaterWidget::Construct(const FArguments& InArgs)
 	if(!GBrushInited)
 	{
 		FVersionUpdaterStyle::Initialize(FString::Printf(TEXT("%s_UpdaterStyle"),*GToolName));
+#if UE_VERSION_OLDER_THAN(5,8,0)
 		FVersionUpdaterStyle::ReloadTextures();
+#endif
 		GBrushInited = true;
 	}
 	
@@ -513,9 +516,17 @@ void SVersionUpdaterWidget::Construct(const FArguments& InArgs)
 	];
 	if(!FVersionUpdaterManager::Get().IsRequestFinished())
 	{
-		FVersionUpdaterManager::Get().AddOnFinishedCallback([&]()
+		const TWeakPtr<SVersionUpdaterWidget> WeakThis =
+			StaticCastSharedRef<SVersionUpdaterWidget>(AsShared());
+		FVersionUpdaterManager::Get().AddOnFinishedCallback([WeakThis]()
 		{
-			OnRemoveVersionFinished();
+			AsyncTask(ENamedThreads::GameThread, [WeakThis]()
+			{
+				if (const TSharedPtr<SVersionUpdaterWidget> Widget = WeakThis.Pin())
+				{
+					Widget->OnRemoveVersionFinished();
+				}
+			});
 		});
 		
 		FVersionUpdaterManager::Get().RequestRemoveVersion(GRemoteVersionFile);

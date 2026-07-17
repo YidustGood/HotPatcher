@@ -37,31 +37,25 @@ bool AddMultiCookerBackendToConfig(const FString& DDCAddr)
 		UE_LOG(LogCmdHandler, Warning, TEXT("not use MultiCookerDDC"));
 		return bStatus;
 	}
-	auto EngineIniIns = GConfig->FindConfigFile(GEngineIni);
-	auto MultiCookerDDCBackendSection = EngineIniIns->FindOrAddSection(MultiCookerDDCBackendName);
-	MultiCookerDDCBackendSection->Empty();
+	GConfig->EmptySection(*MultiCookerDDCBackendName,GEngineIni);
 	
-	auto UpdateKeyLambda = [](FConfigSection* Section,const FString& Key,const FString& Value)
+	auto UpdateKeyLambda = [](const FString& Key,const FString& Value)
 	{
-		if(Section->Find(*Key))
-		{
-			Section->Remove(*Key);
-		}
 		UE_LOG(LogCmdHandler, Display, TEXT("Override Section MultiCookerDDC key: %s to %s."),*Key,*Value);
-		Section->Add(*Key,FConfigValue(*Value));
+		GConfig->SetString(*MultiCookerDDCBackendName,*Key,*Value,GEngineIni);
 	};
 	
-	UpdateKeyLambda(MultiCookerDDCBackendSection,TEXT("MinimumDaysToKeepFile"),TEXT("7"));
-	UpdateKeyLambda(MultiCookerDDCBackendSection,TEXT("Root"),TEXT("(Type=KeyLength, Length=120, Inner=AsyncPut)"));
-	UpdateKeyLambda(MultiCookerDDCBackendSection,TEXT("AsyncPut"),TEXT("(Type=AsyncPut, Inner=Hierarchy)"));
-	UpdateKeyLambda(MultiCookerDDCBackendSection,TEXT("Hierarchy"),TEXT("(Type=Hierarchical, Inner=Boot, Inner=Pak, Inner=EnginePak, Inner=Local, Inner=Shared)"));
-	UpdateKeyLambda(MultiCookerDDCBackendSection,TEXT("Boot"),TEXT("(Type=Boot, Filename=\"%GAMEDIR%DerivedDataCache/Boot.ddc\", MaxCacheSize=512)"));
+	UpdateKeyLambda(TEXT("MinimumDaysToKeepFile"),TEXT("7"));
+	UpdateKeyLambda(TEXT("Root"),TEXT("(Type=KeyLength, Length=120, Inner=AsyncPut)"));
+	UpdateKeyLambda(TEXT("AsyncPut"),TEXT("(Type=AsyncPut, Inner=Hierarchy)"));
+	UpdateKeyLambda(TEXT("Hierarchy"),TEXT("(Type=Hierarchical, Inner=Boot, Inner=Pak, Inner=EnginePak, Inner=Local, Inner=Shared)"));
+	UpdateKeyLambda(TEXT("Boot"),TEXT("(Type=Boot, Filename=\"%GAMEDIR%DerivedDataCache/Boot.ddc\", MaxCacheSize=512)"));
 
 	FString DDC = FString::Printf(
 		TEXT("(Type=FileSystem, ReadOnly=false, Clean=false, Flush=false, DeleteUnused=false, UnusedFileAge=10, FoldersToClean=10, MaxFileChecksPerSec=1, Path=%s, EnvPathOverride=UE-SharedDataCachePath, EditorOverrideSetting=SharedDerivedDataCache)"),
 		*DDCAddr
 	);
-	UpdateKeyLambda(MultiCookerDDCBackendSection,TEXT("Shared"),DDC);
+	UpdateKeyLambda(TEXT("Shared"),DDC);
 
 	FString DDCBackendName;
 	if(!FParse::Value(FCommandLine::Get(),TEXT("-ddc="),DDCBackendName))
@@ -109,8 +103,7 @@ void UnOverrideEditorEnv()
 {
 	if(bDDCUrl)
 	{
-		auto EngineIniIns = GConfig->FindConfigFile(GEngineIni);
-		EngineIniIns->Remove(MultiCookerDDCBackendName);
+		GConfig->EmptySection(*MultiCookerDDCBackendName,GEngineIni);
 	}
 }
 

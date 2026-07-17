@@ -9,6 +9,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Paths.h"
+#include "Misc/ScopeExit.h"
 
 DEFINE_LOG_CATEGORY(LogHotPatcherCommandlet);
 
@@ -17,7 +18,12 @@ DEFINE_LOG_CATEGORY(LogHotPatcherCommandlet);
 int32 UHotPatcherCommandlet::Main(const FString& Params)
 {
 #if WITH_UE5
+	const bool bWasRunningCookCommandlet = PRIVATE_GIsRunningCookCommandlet;
 	PRIVATE_GIsRunningCookCommandlet = true;
+	ON_SCOPE_EXIT
+	{
+		PRIVATE_GIsRunningCookCommandlet = bWasRunningCookCommandlet;
+	};
 #endif
 	
 	Super::Main(Params);
