@@ -22,6 +22,7 @@
 #include "UObject/MetaData.h"
 #include "UObject/UObjectHash.h"
 #include "Misc/EngineVersionComparison.h"
+#include "HAL/PlatformMisc.h"
 
 bool UFlibAssetManageHelper::bIncludeOnlyOnDiskAssets = !GForceSingleThread;
 
@@ -1456,7 +1457,7 @@ UPackage* UFlibAssetManageHelper::LoadPackage(UPackage* InOuter, const TCHAR* In
 	FArchive* InReaderOverride)
 {
 #if ENGINE_MINOR_VERSION < 26
-	FScopedNamedEvent CookPackageEvent(FColor::Red,*FString::Printf(TEXT("LoadPackage %s"),InLongPackageName));
+	SCOPED_NAMED_EVENT_F(TEXT("LoadPackage %s"), FColor::Red, InLongPackageName);
 #endif
 	UE_LOG(LogHotPatcher,Verbose,TEXT("Load %s"),InLongPackageName);
 	return ::LoadPackage(InOuter,InLongPackageName,LoadFlags,InReaderOverride);
@@ -1465,7 +1466,7 @@ UPackage* UFlibAssetManageHelper::LoadPackage(UPackage* InOuter, const TCHAR* In
 UPackage* UFlibAssetManageHelper::GetPackage(FName PackageName)
 {
 #if ENGINE_MINOR_VERSION < 26
-	FScopedNamedEvent CookPackageEvent(FColor::Red,*FString::Printf(TEXT("GetPackage %s"),*PackageName.ToString()));
+	SCOPED_NAMED_EVENT_F(TEXT("GetPackage %s"), FColor::Red, *PackageName.ToString());
 #endif
 	if (PackageName == NAME_None)
 	{
